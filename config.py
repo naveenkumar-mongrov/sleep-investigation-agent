@@ -2,14 +2,16 @@
 Configuration file for Sleep Investigation Agent
 """
 
-# OpenAI API Key
-OPENAI_API_KEY = "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"
+import os
 
-# Google Sheets API Key
-GOOGLE_SHEETS_API_KEY = "407410313777-dp0agbnlgd173nta01g3hfubt9s3ovn0.apps.googleusercontent.com"  # Add your Google Sheets API key here
+# OpenAI API Key - Set as environment variable in Streamlit Cloud
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-# GitHub Token (for private repositories)
-GITHUB_TOKEN = ""  # Add your GitHub personal access token here
+# Google Sheets API Key - Set as environment variable in Streamlit Cloud
+GOOGLE_SHEETS_API_KEY = os.environ.get("GOOGLE_SHEETS_API_KEY", "")
+
+# GitHub Token (for private repositories) - Set as environment variable in Streamlit Cloud
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 
 # Batch processing settings
 MAX_WORKERS = 4  # Number of parallel workers for batch processing

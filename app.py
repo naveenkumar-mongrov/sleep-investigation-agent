@@ -421,8 +421,8 @@ def batch_analysis_page(api_key):
     st.markdown("### Data Source")
     data_source = st.radio(
         "Select data source:",
-        ["Manual Upload", "Google Sheets + GitHub"],
-        help="Choose between manual file upload or automatic fetch from external sources"
+        ["Manual Upload", "Google Sheets (for user claims)"],
+        help="Choose between manual file upload or fetch user claims from Google Sheets"
     )
     
     if data_source == "Manual Upload":
@@ -446,8 +446,16 @@ def batch_analysis_page(api_key):
                 help="Optional: Upload a JSON file with user claims, production, and test data"
             )
     else:
-        # External source configuration
-        st.markdown("### Google Sheets Configuration")
+        # Google Sheets for user claims only
+        st.markdown("### Upload JSON Files")
+        json_files = st.file_uploader(
+            "Upload multiple Ring JSON files",
+            type=['json'],
+            accept_multiple_files=True,
+            help="Select all JSON files to process"
+        )
+        
+        st.markdown("### Google Sheets Configuration (for user claims)")
         google_sheets_id = st.text_input(
             "Google Sheets Spreadsheet ID",
             value=config.GOOGLE_SHEETS_ID,
@@ -459,39 +467,12 @@ def batch_analysis_page(api_key):
             help="Name of the sheet to fetch data from"
         )
         google_api_key = st.text_input(
-            "Google Sheets API Key (Optional)",
+            "Google Sheets API Key",
             value=config.GOOGLE_SHEETS_API_KEY,
             type="password",
-            help="Leave empty to use config.py value"
+            help="Required to fetch user claims from Google Sheets"
         )
         
-        st.markdown("### GitHub Configuration")
-        col1, col2 = st.columns(2)
-        with col1:
-            github_owner = st.text_input(
-                "GitHub Repository Owner",
-                value=config.GITHUB_OWNER,
-                help="e.g., 'octocat' for https://github.com/octocat/repo"
-            )
-            github_repo = st.text_input(
-                "GitHub Repository Name",
-                value=config.GITHUB_REPO,
-                help="e.g., 'Hello-World' for https://github.com/octocat/Hello-World"
-            )
-        with col2:
-            github_path = st.text_input(
-                "Path to JSON Files (Optional)",
-                value=config.GITHUB_PATH,
-                help="e.g., 'data/json' if files are in a subdirectory"
-            )
-            github_token = st.text_input(
-                "GitHub Token (Optional - for private repos)",
-                value=config.GITHUB_TOKEN,
-                type="password",
-                help="Leave empty for public repositories"
-            )
-        
-        json_files = None
         claims_file = None
     
     # Generate claims template
@@ -534,90 +515,95 @@ def batch_analysis_page(api_key):
     process_button = st.button("🚀 Process Batch", type="primary", use_container_width=True)
     
     if process_button:
-        if data_source == "Manual Upload":
-            if not json_files:
-                st.error("Please upload at least one JSON file")
-                return
-            
-            # Save uploaded files
-            upload_dir = "uploads/batch"
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            json_paths = []
-            for json_file in json_files:
-                file_path = os.path.join(upload_dir, json_file.name)
-                with open(file_path, 'wb') as f:
-                    f.write(json_file.getbuffer())
-                json_paths.append(file_path)
-            
-            # Save claims file if provided
-            claims_path = None
-            if claims_file:
-                claims_path = os.path.join(upload_dir, claims_file.name)
-                with open(claims_path, 'wb') as f:
-                    f.write(claims_file.getbuffer())
-            
-            # Process batch
-            with st.spinner(f"Processing {len(json_paths)} users with AI analysis..."):
-                try:
-                    processor = BatchProcessor(api_key)
+        if not json_files:
+            st.error("Please upload at least one JSON file")
+            return
+        
+        # Save uploaded files
+        upload_dir = "uploads/batch"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        json_paths = []
+        for json_file in json_files:
+            file_path = os.path.join(upload_dir, json_file.name)
+            with open(file_path, 'wb') as f:
+                f.write(json_file.getbuffer())
+            json_paths.append(file_path)
+        
+        # Process batch
+        with st.spinner(f"Processing {len(json_paths)} users with AI analysis..."):
+            try:
+                processor = BatchProcessor(api_key)
+                
+                if data_source == "Google Sheets (for user claims)" and google_sheets_id and google_api_key:
+                    # Fetch claims from Google Sheets
+                    from utils.data_fetchers import GoogleSheetsFetcher
+                    sheets_fetcher = GoogleSheetsFetcher(google_api_key)
+                    sheet_data = sheets_fetcher.fetch_sheet_data(google_sheets_id, sheet_name)
+                    claims = sheets_fetcher.convert_to_claims_format(sheet_data, {})
                     
-                    if claims_path:
-                        # Process with claims file
-                        batch_results = processor.process_batch_from_directory(
-                            upload_dir,
-                            claims_path,
-                            max_workers=config.MAX_WORKERS
-                        )
-                    else:
-                        # Process without claims (empty data)
-                        user_claims = [{}] * len(json_paths)
-                        production_data = [{}] * len(json_paths)
-                        test_data = [{}] * len(json_paths)
-                        user_ids = [os.path.basename(f) for f in json_paths]
+                    # Map claims to JSON files
+                    claims_map = {claim.get('filename', ''): claim for claim in claims}
+                    user_claims = []
+                    production_data_list = []
+                    test_data_list = []
+                    user_ids = []
+                    
+                    for json_file in json_paths:
+                        filename = os.path.basename(json_file)
+                        claim = claims_map.get(filename, {})
                         
-                        batch_results = processor.process_batch(
-                            json_paths,
-                            user_claims,
-                            production_data,
-                            test_data,
-                            user_ids,
-                            max_workers=config.MAX_WORKERS
-                        )
+                        user_ids.append(claim.get('user_id', filename))
+                        user_claims.append({
+                            'sleep_start': claim.get('sleep_start', ''),
+                            'wake_time': claim.get('wake_time', ''),
+                            'awake_during': claim.get('awake_during', ''),
+                            'nap': claim.get('nap', ''),
+                            'remarks': claim.get('remarks', '')
+                        })
+                        production_data_list.append(claim.get('production_data', {}))
+                        test_data_list.append(claim.get('test_data', {}))
                     
-                    display_batch_results(batch_results, processor)
-                    
-                except Exception as e:
-                    st.error(f"Batch processing failed: {str(e)}")
-                    st.exception(e)
-        else:
-            # External sources
-            if not google_sheets_id and not (github_owner and github_repo):
-                st.error("Please provide either Google Sheets ID or GitHub repository details")
-                return
-            
-            with st.spinner("Fetching data from external sources and processing with AI analysis..."):
-                try:
-                    processor = BatchProcessor(
-                        api_key,
-                        google_api_key or config.GOOGLE_SHEETS_API_KEY,
-                        github_token or config.GITHUB_TOKEN
-                    )
-                    
-                    batch_results = processor.process_from_external_sources(
-                        google_sheets_id=google_sheets_id if google_sheets_id else None,
-                        github_owner=github_owner if github_owner else None,
-                        github_repo=github_repo if github_repo else None,
-                        github_path=github_path,
-                        sheet_name=sheet_name,
+                    batch_results = processor.process_batch(
+                        json_paths,
+                        user_claims,
+                        production_data_list,
+                        test_data_list,
+                        user_ids,
                         max_workers=config.MAX_WORKERS
                     )
+                elif claims_file:
+                    # Process with uploaded claims file
+                    claims_path = os.path.join(upload_dir, claims_file.name)
+                    with open(claims_path, 'wb') as f:
+                        f.write(claims_file.getbuffer())
                     
-                    display_batch_results(batch_results, processor)
+                    batch_results = processor.process_batch_from_directory(
+                        upload_dir,
+                        claims_path,
+                        max_workers=config.MAX_WORKERS
+                    )
+                else:
+                    # Process without claims (empty data)
+                    user_claims = [{}] * len(json_paths)
+                    production_data = [{}] * len(json_paths)
+                    test_data = [{}] * len(json_paths)
+                    user_ids = [os.path.basename(f) for f in json_paths]
                     
-                except Exception as e:
-                    st.error(f"External data processing failed: {str(e)}")
-                    st.exception(e)
+                    batch_results = processor.process_batch(
+                        json_paths,
+                        user_claims,
+                        production_data,
+                        test_data,
+                        user_ids,
+                        max_workers=config.MAX_WORKERS
+                    )
+                
+                display_batch_results(batch_results, processor)
+                
+            except Exception as e:
+                st.error(f"Batch processing failed: {str(e)}")
+                st.exception(e)
 
 
 def display_batch_results(batch_results, processor):
