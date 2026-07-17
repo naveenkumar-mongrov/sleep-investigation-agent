@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleep Investigation AI Agent - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .result-card.success {
+            border-left-color: #28a745;
+        }
+        
+        .result-card.warning {
+            border-left-color: #ffc107;
+        }
+        
+        .result-card.error {
+            border-left-color: #dc3545;
+        }
+        
+        .result-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .metric {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 5px;
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .status-badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .feature-card .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card p {
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>😴 Sleep Investigation AI Agent</h1>
+            <p>AI-Powered Sleep Data Analysis Tool</p>
+        </div>
+        
+        <div class="content">
+            <!-- Features Overview -->
+            <div class="section">
+                <h2>🔧 Features</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="icon">📊</div>
+                        <h4>JSON Parsing</h4>
+                        <p>Extracts sleep records, HR, and activity data from Ring JSON files</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🎯</div>
+                        <h4>Sleep Stage Mapping</h4>
+                        <p>Classifies stages: Deep, Light, REM, Awake</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🔍</div>
+                        <h4>Gap Detection</h4>
+                        <p>Identifies missing data intervals from ring capture</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">⏰</div>
+                        <h4>Initial Awake Analysis</h4>
+                        <p>Detects awake periods before actual sleep</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">❤️</div>
+                        <h4>HR Validation</h4>
+                        <p>Validates sleep claims using heart rate trends</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">😴</div>
+                        <h4>Nap Detection</h4>
+                        <p>Identifies potential nap events</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🔧</div>
+                        <h4>Build Comparison</h4>
+                        <p>Compares JSON vs Production vs Test builds</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🎯</div>
+                        <h4>Root Cause Engine</h4>
+                        <p>Classifies issues and determines root cause</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Demo Input Form -->
+            <div class="section">
+                <h2>📝 Demo Analysis</h2>
+                <p style="margin-bottom: 20px; color: #666;">Fill in the form below to see a simulated analysis (no actual JSON upload required for demo)</p>
+                
+                <div class="row">
+                    <div class="input-group">
+                        <label>User Sleep Start Time</label>
+                        <input type="text" id="userSleepStart" value="11:20 PM" placeholder="e.g., 11:20 PM">
+                    </div>
+                    <div class="input-group">
+                        <label>User Wake Time</label>
+                        <input type="text" id="userWakeTime" value="7:10 AM" placeholder="e.g., 7:10 AM">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="input-group">
+                        <label>Production Sleep Start</label>
+                        <input type="text" id="prodSleepStart" value="10:10 PM" placeholder="e.g., 10:10 PM">
+                    </div>
+                    <div class="input-group">
+                        <label>Test Sleep Start</label>
+                        <input type="text" id="testSleepStart" value="10:10 PM" placeholder="e.g., 10:10 PM">
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="runDemo()">🔍 Run Analysis Demo</button>
+            </div>
+            
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing sleep data...</p>
+            </div>
+            
+            <!-- Results -->
+            <div class="results" id="results">
+                <!-- AI Summary -->
+                <div class="result-card success">
+                    <h3>🤖 AI Investigation Summary</h3>
+                    <p id="aiSummary">Ignoring the initial awake period (42 minutes), sleep start matches the user's claimed time of 11:20 PM. Heart rate trend supports the user's claimed sleep onset. No significant gaps detected in data capture.</p>
+                </div>
+                
+                <!-- User Claim vs JSON -->
+                <div class="result-card">
+                    <h3>👤 User Claim vs JSON</h3>
+                    <div>
+                        <span class="metric">User: 11:20 PM</span>
+                        <span class="metric">JSON: 10:10 PM</span>
+                        <span class="metric">JSON (Ignored Awake): 11:18 PM</span>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <span class="status-badge warning">Original: No Match</span>
+                        <span class="status-badge success">Ignored Awake: Match ✓</span>
+                    </div>
+                </div>
+                
+                <!-- Initial Awake -->
+                <div class="result-card warning">
+                    <h3>⏰ Initial Awake Detected</h3>
+                    <p><strong>Duration:</strong> 42 minutes</p>
+                    <p><strong>Awake Period:</strong> 10:10 PM → 10:52 PM</p>
+                    <p><strong>Sleep Start (ignored awake):</strong> 10:52 PM</p>
+                    <p><strong>Matches user claim:</strong> ✓ Yes (within tolerance)</p>
+                </div>
+                
+                <!-- HR Validation -->
+                <div class="result-card success">
+                    <h3>❤️ Heart Rate Validation</h3>
+                    <p><strong>HR Trend:</strong> Decreasing</p>
+                    <p><strong>HR Values:</strong> 86 → 82 → 76 → 69 → 63 bpm</p>
+                    <p><strong>Classification:</strong> HR supports user claim</p>
+                    <span class="status-badge success">✓ HR Confirms Sleep Onset</span>
+                </div>
+                
+                <!-- Gap Analysis -->
+                <div class="result-card warning">
+                    <h3>⚠️ Missing Sleep Records</h3>
+                    <p><strong>Total Gaps:</strong> 2</p>
+                    <p><strong>Total Missing Time:</strong> 25 minutes</p>
+                    <table>
+                        <tr>
+                            <th>Gap Start</th>
+                            <th>Gap End</th>
+                            <th>Duration</th>
+                            <th>Reason</th>
+                        </tr>
+                        <tr>
+                            <td>11:42 PM</td>
+                            <td>12:05 AM</td>
+                            <td>23 mins</td>
+                            <td>Ring didn't capture data</td>
+                        </tr>
+                        <tr>
+                            <td>3:15 AM</td>
+                            <td>3:17 AM</td>
+                            <td>2 mins</td>
+                            <td>Ring didn't capture data</td>
+                        </tr>
+                    </table>
+                    <p style="margin-top: 10px;"><strong>Classification:</strong> Ring Data Loss (not application issue)</p>
+                </div>
+                
+                <!-- Nap Detection -->
+                <div class="result-card">
+                    <h3>😴 Nap Detection</h3>
+                    <p><strong>Total Naps Detected:</strong> 0</p>
+                    <span class="status-badge success">No nap events detected</span>
+                </div>
+                
+                <!-- Build Comparison -->
+                <div class="result-card success">
+                    <h3>🔧 Build Comparison</h3>
+                    <table>
+                        <tr>
+                            <th>Feature</th>
+                            <th>JSON</th>
+                            <th>Production</th>
+                            <th>Test</th>
+                            <th>Result</th>
+                        </tr>
+                        <tr>
+                            <td>Sleep Start</td>
+                            <td>10:10 PM</td>
+                            <td>10:10 PM</td>
+                            <td>10:10 PM</td>
+                            <td><span class="status-badge success">Pass</span></td>
+                        </tr>
+                        <tr>
+                            <td>Sleep End</td>
+                            <td>7:08 AM</td>
+                            <td>7:08 AM</td>
+                            <td>7:08 AM</td>
+                            <td><span class="status-badge success">Pass</span></td>
+                        </tr>
+                        <tr>
+                            <td>Deep Sleep</td>
+                            <td>90 mins</td>
+                            <td>90 mins</td>
+                            <td>90 mins</td>
+                            <td><span class="status-badge success">Pass</span></td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Root Cause -->
+                <div class="result-card">
+                    <h3>🎯 Root Cause Analysis</h3>
+                    <p><strong>Primary Cause:</strong> Initial awake incorrectly considered</p>
+                    <p><strong>Verdict:</strong> Initial awake misclassification with temporary ring capture gaps</p>
+                    <div style="margin-top: 15px;">
+                        <span class="status-badge success">✅ No Application Issue</span>
+                    </div>
+                </div>
+                
+                <!-- QA Remarks -->
+                <div class="result-card">
+                    <h3>📝 QA Remarks</h3>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                        <p>• Ignoring the initial awake period aligns with the user's reported sleep time.</p>
+                        <p>• Heart rate trend supports the user's claimed sleep onset.</p>
+                        <p>• Ring didn't capture sleep data (2 gaps totaling 25 mins). Not an application issue.</p>
+                        <p>• Production and Test Build match JSON.</p>
+                    </div>
+                </div>
+                
+                <!-- Recommendation -->
+                <div class="result-card success">
+                    <h3>💡 Recommendation</h3>
+                    <p>Algorithm tuning needed for initial awake detection. Not an application issue - assign to firmware/algorithms team for investigation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function runDemo() {
+            // Show loading
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            
+            // Simulate analysis delay
+            setTimeout(() => {
+                // Hide loading, show results
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('results').classList.add('show');
+                
+                // Update with user input values
+                const userSleep = document.getElementById('userSleepStart').value;
+                const userWake = document.getElementById('userWakeTime').value;
+                const prodSleep = document.getElementById('prodSleepStart').value;
+                const testSleep = document.getElementById('testSleepStart').value;
+                
+                // Update AI summary
+                document.getElementById('aiSummary').textContent = 
+                    `Ignoring the initial awake period (42 minutes), sleep start matches the user's claimed time of ${userSleep}. Heart rate trend supports the user's claimed sleep onset. No significant gaps detected in data capture.`;
+                
+                // Scroll to results
+                document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
